@@ -18,6 +18,7 @@ def limit_handler(cursor):
 			yield cursor.next()
 		except tweepy.RateLimitError:
 			time.sleep(15 * 60)
+
 def Authenticate():
 	auth = OAuthHandler(CONSUMER_KEY,CONSUMER_SECRET)
 	auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
@@ -30,5 +31,6 @@ def QueryProfile(api,QUERY_PROFILE,limit):
 	tweets=[]
 	for tweet in limit_handler(tweepy.Cursor(api.user_timeline,id=QUERY_PROFILE).pages(limit)):
 		tweets.append(tweet)
+		print(type(tweet))
 	return tweets
 

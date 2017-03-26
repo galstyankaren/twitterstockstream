@@ -6,5 +6,4 @@ def main():
 	print("Querying "+QUERY_PROFILE)
 	api=grabber.Authenticate()
 	tweets=grabber.QueryProfile(api,QUERY_PROFILE,2)
-	print(str(tweets))
 main()
