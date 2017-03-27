@@ -12,14 +12,16 @@ ACCESS_TOKEN="781620753456308224-3pGPA8366kQLCwsnpm46clwaebrszWV"
 ACCESS_SECRET="fBNJ3ayrwgq3xkPJuvOKrEL1gLwg71jF1bD8H7beXuwnN"
 
 class GrabberStreamListener(tweepy.StreamListener):
+	"""overrides tweepy.StreamListener to add logic to on_status and on_error"""
 	def on_status(self, status):
 	    print(status.text)
 	def on_error(self, status_code):
 		if status_code == 420:
 	        #returning False in on_data disconnects the stream
 			return False
-"""Handling Twitter API request Limits"""
+			
 def limit_handler(cursor):
+	"""Handling Twitter API request Limits"""
 	while True:
 		try:
 			yield cursor.next()
@@ -27,6 +29,7 @@ def limit_handler(cursor):
 			time.sleep(15 * 60)
 
 def Authenticate():
+	"""OAuth for Twitter API"""
 	auth = OAuthHandler(CONSUMER_KEY,CONSUMER_SECRET)
 	auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
 	#TODO fix JSON parser error 
@@ -34,6 +37,7 @@ def Authenticate():
 	return api
 
 def QueryProfile(api,QUERY_PROFILE,limit):
+	"""Query a profile with provided profile id, returning tweets to a limit of pages"""
 	user = api.user_timeline(QUERY_PROFILE)
 	tweets=[]
 	for tweet in limit_handler(tweepy.Cursor(api.user_timeline,id=QUERY_PROFILE).pages(limit)):
@@ -42,9 +46,7 @@ def QueryProfile(api,QUERY_PROFILE,limit):
 	return tweets
 
 def StartStream(api,filter):
-	#override tweepy.StreamListener to add logic to on_status
 	
-
 	StreamListener =GrabberStreamListener()
 	stream=tweepy.Stream(auth = api.auth, listener=GrabberStreamListener())
 	stream.filter(track=[filter])
