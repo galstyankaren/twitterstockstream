@@ -1,7 +1,6 @@
 import tweepy
 import json
 import datetime
-import copy
 from tweepy import OAuthHandler
 from tweepy import Stream
 from tweepy.streaming import StreamListener
