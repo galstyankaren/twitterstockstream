@@ -1,3 +1,5 @@
+import sys
+import os
 import tweepy
 import json
 import datetime
@@ -25,8 +27,10 @@ twitter_accounts={"Reuters":1652541}
 TICKER="AAPL"
 
 class Data(object):
-    def __init__(self, _tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
+    def __init__(self,_user,_retweeted,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
         self.ticker = _ticker
+        self.user = _user
+        self.retweeted = _retweeted
         self.tweet = _tweet
         self.date = _date
         self.open = _open
@@ -135,8 +139,8 @@ def getHistoricalPrices(ticker, startDate, endDate):
 
 
 def jdefault(o):
-    if isinstance(o, datetime.date):
-        return dict(year=o.year, month=o.month, day=o.day)
+    if isinstance(o, datetime.datetime):
+        return o.isoformat()
     else:
         return o.__dict__
 
@@ -147,12 +151,12 @@ class GrabberStreamListener(tweepy.StreamListener):
         temp = getStockInfoVerbose(TICKER)
         stockdata=temp[0]
         with open('data.json', 'a') as outfile:
-            jsonData = Data(status.text, TICKER, status.created_at,
+                #def __init__(self,_user,_retweeted,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
+
+            jsonData = Data(status.id_str,status.retweet_count,status.text,TICKER, status.created_at,
                             stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
             json.dump(jsonData, outfile,
                               default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
-            print(json.dumps(jsonData,
-                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False))
 
     def on_error(self, status_code):
         if status_code == 420:
@@ -190,7 +194,24 @@ def QueryProfile(api, QUERY_PROFILE, limit):
 
 def StartStream(api,company):
     """Query Twitter with a specific filter"""
-    StreamListener = GrabberStreamListener()
-    stream = tweepy.Stream(auth=api.auth, listener=GrabberStreamListener())
-    # TODO make async
-    stream.filter(track=[company], languages=["en"], async=True)
+    try:
+        StreamListener = GrabberStreamListener()
+        stream = tweepy.Stream(auth=api.auth, listener=GrabberStreamListener())
+        stream.filter(track=[company], languages=["en"])
+        stream.userstream( track=all_users(), async=True )
+    except KeyboardInterrupt:
+        print(' Grabber stream Closed')
+        try: 
+            stream.disconnect()
+            del stream
+            JSONify()
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)
+
+def JSONify():
+    #with open('data.json', 'w') as outfile:
+        #TODO ADD block Brackets to the begining and the end of JSON file
+        #Replace }{ with },{
+    print("data.json is now valid")
+
