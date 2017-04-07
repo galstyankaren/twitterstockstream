@@ -210,8 +210,9 @@ def StartStream(api,company):
             os._exit(0)
 
 def JSONify():
-    #with open('data.json', 'w') as outfile:
-        #TODO ADD block Brackets to the begining and the end of JSON file
-        #Replace }{ with },{
-    print("data.json is now valid")
+    with open("data.json", "rt") as fin:
+        with open("final.json", "w") as fout:
+            for line in fin:
+                fout.write(line.replace('}{', '},{'))
+    print("data.json is now valid under final.json")
 
