@@ -2,6 +2,7 @@ import sys
 import os
 import tweepy
 import json
+import string
 import datetime
 from tweepy import OAuthHandler
 from tweepy import Stream
@@ -27,10 +28,11 @@ twitter_accounts={"Reuters":1652541}
 TICKER="AAPL"
 
 class Data(object):
-    def __init__(self,_user,_retweeted,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
+    def __init__(self,_user,_favorite_count,_retweet_count,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
         self.ticker = _ticker
         self.user = _user
-        self.retweeted = _retweeted
+        self.favorite_count = _favorite_count
+        self.retweet_count = _retweet_count
         self.tweet = _tweet
         self.date = _date
         self.open = _open
@@ -151,11 +153,12 @@ class GrabberStreamListener(tweepy.StreamListener):
         temp = getStockInfoVerbose(TICKER)
         stockdata=temp[0]
         with open('data.json', 'a') as outfile:
-                #def __init__(self,_user,_retweeted,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
 
-            jsonData = Data(status.id_str,status.retweet_count,status.text,TICKER, status.created_at,
+            jsonData = Data(status.id_str,status.favorite_count,tweet[0].retweet_count,status.text,TICKER, status.created_at,
                             stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
             json.dump(jsonData, outfile,
+                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+            json.dumps(jsonData,
                               default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
 
     def on_error(self, status_code):
@@ -178,7 +181,6 @@ def Authenticate():
     """OAuth for Twitter API"""
     auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
     auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
-    # TODO fix JSON parser error
     api = tweepy.API(auth)  # ,parser=tweepy.parsers.JSONParser())
     return api
 
@@ -186,11 +188,19 @@ def Authenticate():
 def QueryProfile(api, QUERY_PROFILE, limit):
     """Query a profile with provided profile id, returning tweets to a limit of pages"""
     user = api.user_timeline(QUERY_PROFILE)
-    tweets = []
     for tweet in limit_handler(tweepy.Cursor(api.user_timeline, id=QUERY_PROFILE).pages(limit)):
-        tweets.append(tweet)
-        print(type(tweet))
-    return tweets
+        temp = getStockInfoVerbose(TICKER)
+        print(str(tweet))
+        stockdata=temp[0]
+        with open('data.json', 'a') as outfile:
+
+            jsonData = Data(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,TICKER, tweet[0].created_at,
+                            stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
+            json.dump(jsonData, outfile,
+                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+            json.dumps(jsonData,
+                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+    JSONify()
 
 
 def StartStream(api,company):
@@ -201,7 +211,7 @@ def StartStream(api,company):
         stream.filter(track=[company], languages=["en"])
         stream.userstream( track=all_users(), async=True )
     except KeyboardInterrupt:
-        print(' Grabber stream Closed')
+        print('\nGrabber stream Closed')
         try: 
             stream.disconnect()
             del stream
@@ -215,5 +225,5 @@ def JSONify():
         with open("final.json", "w") as fout:
             for line in fin:
                 fout.write(line.replace('}{', '},{'))
-    print("data.json is now valid under final.json")
+    print("\ndata.json is now valid under final.json")
 
