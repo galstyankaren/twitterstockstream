@@ -159,10 +159,11 @@ class GrabberStreamListener(tweepy.StreamListener):
                               default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
 
     def on_error(self, status_code):
-        if status_code == 420:
-            # returning False in on_data disconnects the stream
-            return False
-
+        print >> sys.stderr, 'Encountered error with status code:', status_code
+        return True 
+    def on_timeout(self):
+        print >> sys.stderr, 'Timeout with Twitter'
+        return True # 
 
 def limit_handler(cursor):
     """Handling Twitter API request Limits"""
