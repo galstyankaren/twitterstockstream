@@ -1,4 +1,4 @@
-import sys, os, json, string, datetime
+import sys, os, json, string, datetime, re
 import tweepy
 import stock
 from tweepy import OAuthHandler
@@ -19,7 +19,7 @@ companies_ticker = {"JPMorgan":"JPM", "AIG":"AIG", "HSBC":"HBC", "INTEL":"INTC",
 twitter_accounts={"Reuters":1652541}
 
 #FOR TESTING ONLY
-TICKER="AAPL"
+#TICKER="AAPL"
 
 class Data(object):
     def __init__(self,_user,_favorite_count,_retweet_count,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
@@ -68,16 +68,18 @@ class GrabberStreamListener(tweepy.StreamListener):
     """overrides tweepy.StreamListener to add logic to on_status and on_error"""
 
     def on_status(self, status):
-        temp = stock.getStockInfoVerbose(TICKER)
-        stockdata=temp[0]
-        with open('data.json', 'a') as outfile:
+        for company, ticker in companies_ticker.items():
+            if findWholeWord(company)(status.text):
+                temp = stock.getStockInfoVerbose(ticker)
+                stockdata=temp[0]
+                with open('data.json', 'a') as outfile:
 
-            jsonData = Data(status.id_str,status.favorite_count,tweet[0].retweet_count,status.text,TICKER, status.created_at,
-                            stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
-            json.dump(jsonData, outfile,
-                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
-            json.dumps(jsonData,
-                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+                    jsonData = Data(status.id_str,status.favorite_count,tweet[0].retweet_count,status.text,ticker, status.created_at,
+                                    stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
+                    json.dump(jsonData, outfile,
+                                      default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+                    json.dumps(jsonData,
+                                      default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
 
     def on_error(self, status_code):
         print >> sys.stderr, 'Encountered error with status code:', status_code
@@ -102,22 +104,26 @@ def Authenticate():
     api = tweepy.API(auth)  # ,parser=tweepy.parsers.JSONParser())
     return api
 
+def findWholeWord(w):
+    return re.compile(r'\b({0})\b'.format(w), flags=re.IGNORECASE).search
+
 def QueryProfile(api, QUERY_PROFILE, limit):
     """Query a profile with provided profile id, returning tweets to a limit of pages"""
     try:
         user = api.user_timeline(QUERY_PROFILE)
         for tweet in limit_handler(tweepy.Cursor(api.user_timeline, id=QUERY_PROFILE).pages(limit)):
-            temp = stock.getStockInfoVerbose(TICKER)
-            print(str(tweet))
-            stockdata=temp[0]
-            with open('temptweet.json', 'a') as outfile:
+            for company, ticker in companies_ticker.items():
+                if findWholeWord(company)(tweet[0].text):
+                    temp = stock.getStockInfoVerbose(ticker)
+                    stockdata=temp[0]
+                    with open('temptweet.json', 'a') as outfile:
 
-                jsonData = Data(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,TICKER, tweet[0].created_at,
-                                stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
-                json.dump(jsonData, outfile,
-                                  default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
-                json.dumps(jsonData,
-                                  default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+                        jsonData = Data(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,ticker, tweet[0].created_at,
+                                        stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
+                        json.dump(jsonData, outfile,
+                                          default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+                        print(json.dumps(jsonData,
+                                          default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False))
         JSONify('temptweet.json','tweets.json')
     except KeyboardInterrupt:
         print('\nProfile Query Interupted')
