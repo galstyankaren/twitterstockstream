@@ -9,7 +9,8 @@ from tweepy import Stream
 from tweepy.streaming import StreamListener
 from rtstock.stock import Stock
 from rtstock.utils import request_historical
-
+from watson_developer_cloud import ToneAnalyzerV3
+from watson_developer_cloud import AuthorizationV1
 
 CONSUMER_KEY = "YqAo5ZRvG1QpPkcGG6rJ0JqwU"
 CONSUMER_SECRET = "AiM11Y5qhg6zsnbrMepUqxe7ejWuwm6NYdck2nOLlzXYcR6yJC"
@@ -182,25 +183,34 @@ def Authenticate():
     auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
     auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
     api = tweepy.API(auth)  # ,parser=tweepy.parsers.JSONParser())
+    with open('watson.txt') as f:
+        credentials = [x.strip().split(':') for x in f.readlines()]
+        for username,password in credentials:
+            authorization = AuthorizationV1(
+            username=username,
+            password=password)
     return api
-
 
 def QueryProfile(api, QUERY_PROFILE, limit):
     """Query a profile with provided profile id, returning tweets to a limit of pages"""
-    user = api.user_timeline(QUERY_PROFILE)
-    for tweet in limit_handler(tweepy.Cursor(api.user_timeline, id=QUERY_PROFILE).pages(limit)):
-        temp = getStockInfoVerbose(TICKER)
-        print(str(tweet))
-        stockdata=temp[0]
-        with open('data.json', 'a') as outfile:
+    try:
+        user = api.user_timeline(QUERY_PROFILE)
+        for tweet in limit_handler(tweepy.Cursor(api.user_timeline, id=QUERY_PROFILE).pages(limit)):
+            temp = getStockInfoVerbose(TICKER)
+            print(str(tweet))
+            stockdata=temp[0]
+            with open('temptweet.json', 'a') as outfile:
 
-            jsonData = Data(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,TICKER, tweet[0].created_at,
-                            stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
-            json.dump(jsonData, outfile,
-                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
-            json.dumps(jsonData,
-                              default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
-    JSONify()
+                jsonData = Data(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,TICKER, tweet[0].created_at,
+                                stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
+                json.dump(jsonData, outfile,
+                                  default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+                json.dumps(jsonData,
+                                  default=jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+        JSONify('temptweet.json','tweets.json')
+    except KeyboardInterrupt:
+        print('\nProfile Query Interupted')
+        JSONify('temptweet.json','tweets.json')
 
 
 def StartStream(api,company):
@@ -211,19 +221,21 @@ def StartStream(api,company):
         stream.filter(track=[company], languages=["en"])
         stream.userstream( track=all_users(), async=True )
     except KeyboardInterrupt:
-        print('\nGrabber stream Closed')
+        print('\nGrabber stream Interupted')
         try: 
             stream.disconnect()
             del stream
-            JSONify()
+            JSONify('temptweet.json','tweets.json')
             sys.exit(0)
         except SystemExit:
             os._exit(0)
 
-def JSONify():
-    with open("data.json", "rt") as fin:
-        with open("final.json", "w") as fout:
+def JSONify(jsonIn,jsonOut):
+    with open(jsonIn,mode='rt') as fin:
+        with open(jsonOut,mode='w') as fout:
+            fout.write('[')
             for line in fin:
                 fout.write(line.replace('}{', '},{'))
-    print("\ndata.json is now valid under final.json")
+            fout.write(']')
+    print("\nData JSONified")
 
