@@ -1,6 +1,5 @@
 from watson_developer_cloud import ToneAnalyzerV3
 from watson_developer_cloud import AuthorizationV1
-from watson_developer_cloud import
 import json
 
 def Authorize():

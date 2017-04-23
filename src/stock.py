@@ -2,6 +2,7 @@ from rtstock.stock import Stock
 from rtstock.utils import request_historical
 import json
 import datetime
+
 def getStockInfoVerbose(ticker):
     """Return verbose result of the ticker"""
     stock = Stock(ticker)
@@ -77,6 +78,9 @@ def getLatestPrice(ticker):
 
 def getHistoricalPrices(ticker, startDate, endDate):
     """Return Historical Prices for the specified ticker"""
-    print(ticker)
-    return request_historical(ticker, startDate, endDate)
+    try:
+        print(ticker)
+        return request_historical(ticker, startDate, endDate)
+    except:
+        return "No Data found"
 
