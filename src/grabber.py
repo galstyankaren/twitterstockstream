@@ -2,6 +2,8 @@ import sys, os, json, datetime
 import tweepy
 import stock
 import utils
+import praw
+
 from tweepy import OAuthHandler
 from tweepy import Stream
 from tweepy.streaming import StreamListener
@@ -22,7 +24,20 @@ twitter_accounts={"Reuters":1652541}
 #FOR TESTING ONLY
 #TICKER="AAPL"
 
-class Data(object):
+class DataReddit(object):
+    def __init__(self,_user,_ups,_downs,_title, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
+        self.ticker = _ticker
+        self.user = _user
+        self.ups = _ups
+        self.downs = _downs
+        self.title = _title
+        self.date = _date
+        self.open = _open
+        self.PreviousClose = _previousClose
+        self.DaysHigh = _daysHigh
+        self.DaysLow = _daysLow
+
+class DataTwitter(object):
     def __init__(self,_user,_favorite_count,_retweet_count,_tweet, _ticker, _date, _open, _previousClose, _daysHigh, _daysLow):
         self.ticker = _ticker
         self.user = _user
@@ -34,7 +49,6 @@ class Data(object):
         self.PreviousClose = _previousClose
         self.DaysHigh = _daysHigh
         self.DaysLow = _daysLow
-
 
 """Twitter Grabber"""
 
@@ -71,7 +85,7 @@ class GrabberStreamListener(tweepy.StreamListener):
                 stockdata=temp[0]
                 with open('data.json', 'a') as outfile:
 
-                    jsonData = Data(status.id_str,status.favorite_count,tweet[0].retweet_count,status.text,ticker, status.created_at,
+                    jsonData = DataTwitter(status.id_str,status.favorite_count,tweet[0].retweet_count,status.text,ticker, status.created_at,
                                     stockdata["Open"], stockdata["PreviousClose"], stockdata["DaysHigh"], stockdata["DaysLow"])
                     json.dump(jsonData, outfile,
                                       default=utils.jdefualt,sort_keys = True, indent = 4, ensure_ascii=False)
@@ -94,7 +108,7 @@ def limit_handler(cursor):
             time.sleep(15 * 60)
 
 
-def Authenticate():
+def AuthenticateTwitter():
     """OAuth for Twitter API"""
     auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
     auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
@@ -112,14 +126,15 @@ def QueryProfile(api, QUERY_PROFILE, limit):
                     queryDate=str(tweet[0].created_at)
                     DateFormated=utils.formatDate(queryDate)
                     temp = stock.getHistoricalPrices(ticker,DateFormated,DateFormated)
-                    stockdata=temp[0]
-                    with open('temptweet.json', 'a') as outfile:
-                        jsonData = Data(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,ticker, queryDate,
-                                        stockdata["Open"], stockdata["Close"], stockdata["High"], stockdata["Low"])
-                        json.dump(jsonData, outfile,
-                                          default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
-                        print(json.dumps(jsonData,
-                                          default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False))
+                    if temp!=0:
+                      stockdata=temp[0]
+                      with open('temptweet.json', 'a') as outfile:
+                          jsonData = DataTwitter(tweet[0].id_str,tweet[0].favorite_count,tweet[0].retweet_count,tweet[0].text,ticker, queryDate,
+                                          stockdata["Open"], stockdata["Close"], stockdata["High"], stockdata["Low"])
+                          json.dump(jsonData, outfile,
+                                            default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+                          print(json.dumps(jsonData,
+                                            default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False))
         utils.JSONify('temptweet.json','tweets.json')
     except KeyboardInterrupt:
         print('\nProfile Query Interupted')
@@ -143,3 +158,36 @@ def StartStream(api,company):
         except SystemExit:
             os._exit(0)
 
+#Reddit Block
+def AuthorizeReddit():
+  """Authorize reddit from reddit.txt"""
+  with open("reddit.txt", 'r') as temp:
+    credentials = [x.strip().split(':') for x in temp.readlines()]
+    for cred in credentials:
+      redditApi = praw.Reddit(client_id=cred[0],
+                                 client_secret=cred[1],
+                                 user_agent=cred[2]
+                                 )
+    return redditApi
+def QuerySubreddit(redditApi,subReddit,l):
+  """Query a specific subreddit with a limit l"""
+  try:
+    for post in redditApi.subreddit(subReddit).hot(limit=l):
+      for company, ticker in companies_ticker.items():
+        if utils.findWholeWord(company)(post.title):
+          queryDate=utils.formatDateUtf(post.created_utc)
+          DateFormated=utils.formatDate(queryDate)
+          temp = stock.getHistoricalPrices(ticker,DateFormated,DateFormated)
+          if temp!=0:
+            stockdata=temp[0]
+            with open('tempreddit.json', 'a') as outfile:
+              jsonData = DataReddit(post.id,post.ups,post.downs,post.title,ticker, queryDate,
+                                            stockdata["Open"], stockdata["Close"], stockdata["High"], stockdata["Low"])
+              json.dump(jsonData, outfile,
+                                              default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
+              print(json.dumps(jsonData,
+                                              default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False))
+    utils.JSONify('tempreddit.json','reddit.json')
+  except KeyboardInterrupt:
+    print('\nProfile Query Interupted')
+    utils.JSONify('tempreddit.json','reddit.json')   

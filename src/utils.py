@@ -18,6 +18,9 @@ def findWholeWord(w):
 def formatDate(date):
     return datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
 
+def formatDateUtf(date):
+    return datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d %H:%M:%S')   
+
 def jdefault(o):
     if isinstance(o, datetime.datetime):
         return o.isoformat()

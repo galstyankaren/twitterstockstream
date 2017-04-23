@@ -82,5 +82,5 @@ def getHistoricalPrices(ticker, startDate, endDate):
         print(ticker)
         return request_historical(ticker, startDate, endDate)
     except:
-        return "No Data found"
+        return 0
 
