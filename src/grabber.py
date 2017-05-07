@@ -3,7 +3,7 @@ import tweepy
 import stock
 import utils
 import praw
-
+import time
 from tweepy import OAuthHandler
 from tweepy import Stream
 from tweepy.streaming import StreamListener
@@ -169,14 +169,20 @@ def AuthorizeReddit():
                                  user_agent=cred[2]
                                  )
     return redditApi
-def QuerySubreddit(redditApi,subReddit,l):
-  """Query a specific subreddit with a limit l"""
-  try:
-    for post in redditApi.subreddit(subReddit).hot(limit=l):
+def RedditLimitHandler(redditApi,subReddit,start_date,end_date):
+  params = {'sort':'new', 'limit':None, 'syntax':'cloudsearch'}
+  return redditApi.subreddit(subReddit).submissions(end_date,start_date)
+  #.search('timestamp:{0}..{1}'.format(end_date,start_date), **params)
+
+def RedditAppendData(subResults,start_date):
+  lastdate=start_date
+  for post in subResults:
       for company, ticker in companies_ticker.items():
         if utils.findWholeWord(company)(post.title):
           queryDate=utils.formatDateUtf(post.created_utc)
           DateFormated=utils.formatDate(queryDate)
+          if int(post.created_utc)<lastdate:
+            lastdate=post.created_utc
           temp = stock.getHistoricalPrices(ticker,DateFormated,DateFormated)
           if temp!=0:
             stockdata=temp[0]
@@ -186,7 +192,24 @@ def QuerySubreddit(redditApi,subReddit,l):
               json.dump(jsonData, outfile,
                                               default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False)
               print(json.dumps(jsonData,
-                                              default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False))
+                                              default=utils.jdefault,sort_keys = True, indent = 4, ensure_ascii=False)) 
+  return lastdate
+
+def CycleReddit(redditApi,subReddit,start_date,end_date):
+  while(start_date>=end_date):
+    limit=RedditLimitHandler(redditApi,subReddit,start_date,end_date)
+    lastdate=RedditAppendData(limit,start_date)
+    print("Start Date "+str(utils.formatDateUtf(lastdate)))
+    print("End Date "+str(utils.formatDateUtf(end_date)))
+    CycleReddit(redditApi,subReddit,lastdate,end_date)
+
+def QuerySubreddit(redditApi,subReddit):
+  """Query a specific subreddit with a limit l"""
+  try:
+    start_date =1433184973#int((datetime.datetime.now() - datetime.timedelta(days=365)).timestamp())#int(datetime.datetime.now().timestamp())
+    end_date= int((datetime.datetime.now() - datetime.timedelta(days=730)).timestamp())#int((datetime.datetime.now() - datetime.timedelta(days=365)).timestamp())
+    CycleReddit(redditApi,subReddit,start_date,end_date)
+
     utils.JSONify('tempreddit.json','reddit.json')
   except KeyboardInterrupt:
     print('\nProfile Query Interupted')

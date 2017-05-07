@@ -2,6 +2,7 @@ import os
 import datetime
 import re
 
+
 def JSONify(jsonIn,jsonOut):
     with open(jsonIn,mode='rt') as fin:
         with open(jsonOut,mode='w') as fout:
@@ -21,6 +22,9 @@ def formatDate(date):
 def formatDateUtf(date):
     return datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d %H:%M:%S')   
 
+def giveNextDate(date):
+    return (datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')+datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    
 def jdefault(o):
     if isinstance(o, datetime.datetime):
         return o.isoformat()

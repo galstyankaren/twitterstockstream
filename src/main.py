@@ -23,7 +23,7 @@ def main():
 			api = grabber.AuthorizeReddit()
 			QUERY_PROFILE=arg.split(':')
 			print("Querying "+QUERY_PROFILE[0]+" up to "+QUERY_PROFILE[1]+" pages")
-			grabber.QuerySubreddit(api,QUERY_PROFILE[0],int(QUERY_PROFILE[1]))
+			grabber.QuerySubreddit(api,QUERY_PROFILE[0])
 		
 		elif opt =='-s':
 			api = grabber.AuthenticateTwitter()
